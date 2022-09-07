@@ -1,132 +1,125 @@
-//define button, LED, pressed
+int buttons[3] = {12, 11, 10};
+int readings[3];
+int LEDPins[3] = {4, 3, 2};
+int pressed[3] = {HIGH, LOW, LOW};
+unsigned long timeWhenPressedLED[3] = {0, 0, 0};
+// We use timeWhenPressedLED to check if the button has been pressed. If it hasn't, then timeWhenPressed = 0.
+// We also use it to let the light be high for 3 seconds.
 
-#define buttonPullDown 12
-#define buttonPullUp 11
-#define buttonInputPullUp 10
-
-#define LED4 4 // red
-#define LED3 3 // yellow
-#define LED2 2 // green
-
-#define pressedPullDown HIGH
-#define pressedPullUp LOW
+int buttonState[3];
+int lastButtonState[3] = {LOW, HIGH, HIGH};
+unsigned long lastDebounceTime[3];
 
 unsigned long timeNow = 0;
-unsigned long timeLED4 = 0;
-unsigned long timeLED3 = 0;
-unsigned long timeLED2 = 0;  //variable for set light closing timer 
+unsigned long pressedTime = 0;
 
-unsigned long pressedTime = 0; //variable for debouncing
+long debounceDelay = 50;
 
 void setup()
 {
   Serial.begin(9600);
-  pinMode(buttonPullUp, INPUT);
-  pinMode(buttonPullDown, INPUT);
-  pinMode(buttonInputPullUp, INPUT_PULLUP);
+  pinMode(buttons[0], INPUT);
+  pinMode(buttons[1], INPUT);
+  pinMode(buttons[2], INPUT_PULLUP);
 
-  pinMode(LED4, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  pinMode(LED2, OUTPUT);
+  pinMode(LEDPins[0], OUTPUT);
+  pinMode(LEDPins[1], OUTPUT);
+  pinMode(LEDPins[2], OUTPUT);
 }
 
 void loop()
 {
   timeNow = millis();
-  
-  int readbuttonPullDown = digitalRead(buttonPullDown);
-  int readbuttonPullUp = digitalRead(buttonPullUp);
-  int readbuttonInputPullUp = digitalRead(buttonInputPullUp);
 
-  toggleLED(LED4, readbuttonPullDown, pressedPullDown);
-  toggleLED(LED3, readbuttonPullUp, pressedPullUp);
-  toggleLED(LED2, readbuttonInputPullUp, pressedPullUp);
+  for (int i = 0; i < 3; i++) {
+    readings[i] = digitalRead(buttons[i]);
+    debounce(i);
+    checkLightFor3Seconds(i);
+  }
 
-  checkLightFor3Seconds(timeLED4, 4);
-  controlYellow(timeLED3, 3);
-  checkLightFor3Seconds(timeLED2, 2);
+  controlYellow();
 }
 
-void toggleLED(int LED, int reading, int pressed){
-  if (LED == 2 && digitalRead(LED4)== HIGH){
+void debounce(int button)
+{
+  if (readings[button] != lastButtonState[button])
+  {
+    lastDebounceTime[button] = millis();
+  }
+  if ((millis() - lastDebounceTime[button]) > debounceDelay)
+  {
+    if (readings[button] != buttonState[button])
+    {
+      buttonState[button] = readings[button];
+
+      if (buttonState[button] == pressed[button])
+      {
+        toggleLED(button);
+      }
+    }
+  }
+  lastButtonState[button] = readings[button];
+}
+
+
+void toggleLED(int button){
+  // if red is high and the button that is pressed is not red
+  if (digitalRead(LEDPins[0]) == HIGH && LEDPins[button] != LEDPins[0]){
     return;
   }
-  if (LED == 3 && (digitalRead(LED4)== HIGH || digitalRead(LED2)== HIGH)){
+
+  // if green is high and the button that is pressed is yellow
+  if (digitalRead(LEDPins[2]) == HIGH && LEDPins[button] == LEDPins[1]){
+    return;
+  }
+
+  timeWhenPressedLED[button] = millis();
+  Serial.print("timeWhenPressedLED[button] (time when pressed this button) = ");
+  Serial.println(timeWhenPressedLED[button]);
+        
+  if (LEDPins[button] != 3){
+    digitalWrite(LEDPins[button], !digitalRead(LEDPins[button]));
+    return;
+  }
+}
+
+void controlYellow()
+{
+  if (timeWhenPressedLED[1] == 0){
     return;
   }
   
-  if (reading == pressed && debounce(pressedTime))
+  int timeAfterPressedLED3 = millis() - timeWhenPressedLED[1];
+
+  if ((timeAfterPressedLED3 > 0 && timeAfterPressedLED3 < 500) || (timeAfterPressedLED3 >= 1000 && timeAfterPressedLED3 < 1500))
   {
-    Serial.println("millis() before pressed = ");
-    Serial.println(millis());
-    pressedTime = millis();
-
-    if (LED != 3){
-      digitalWrite(LED, !digitalRead(LED));
-    }
-//    delay(500);
-
-    switch(LED){ //set timer after light is opening
-      case 4:
-        timeLED4 = millis();
-        break;
-       case 3:
-        timeLED3 = millis();
-        break;
-       case 2:
-        timeLED2 = millis();
-        break;
-       default:
-        break;
-    }
+    digitalWrite(LEDPins[1], HIGH);
   }
-}
-void controlYellow(unsigned long timeLED, int LED){
-    if(timeLED != 0 && millis()- timeLED >= 0 && millis()- timeLED < 500){
-      digitalWrite(LED, HIGH);
-    }
-    else if(timeLED != 0 && millis()- timeLED >= 500 && millis()- timeLED < 1000){
-      digitalWrite(LED, LOW);
-    }
-    else if(timeLED != 0 && millis()- timeLED >= 1000 && millis()- timeLED < 1500){
-      digitalWrite(LED, HIGH);
-    }
-    else if(timeLED != 0 && millis()- timeLED >= 1500 && millis()- timeLED < 2000){
-      digitalWrite(LED, LOW);
-    }
-    else{
-      timeLED3 = 0; //reset timer sfter blink
-    }
-}
-void checkLightFor3Seconds(unsigned long timeLED, int LED){ //after 3 sec ,close the light and reset timer
-   if (timeLED != 0 && millis() - timeLED >= 3000)
+  else if ((timeAfterPressedLED3 >= 500 && timeAfterPressedLED3 < 1000) || (timeAfterPressedLED3 >= 1500 && timeAfterPressedLED3 < 2000))
   {
-    Serial.println("millis() after pressed = ");
-    Serial.println(millis());
-
-    if(digitalRead(LED) == HIGH){
-      digitalWrite(LED, LOW);
-    }
-    
-    switch(LED){
-      case 4:
-        timeLED4 = 0;
-        break;
-//       case 3:
-//        timeLED3 = 0;
-       case 2:
-        timeLED2 = 0;
-        break;
-       default:
-        break;
-    }
+    digitalWrite(LEDPins[1], LOW);
+  }
+  else
+  {
+    timeWhenPressedLED[1] = 0;
   }
 }
 
-boolean debounce(unsigned long pressedTime){
-  int isNotBounce = 0;
-  if(millis()- pressedTime >= 220){
-    isNotBounce = 1; //ถ้าเวลากดห่างจากรอบที่แล้ว70msถือว่าเป็นการกด ไม่ใช่Bounce
+void checkLightFor3Seconds(int button)
+{ 
+  if (timeWhenPressedLED[button] == 0 || LEDPins[button] == 3){
+    return;
   }
-  return isNotBounce;
+  
+  if (millis() - timeWhenPressedLED[button] >= 3000)
+  {
+    if (digitalRead(LEDPins[button]) == HIGH)
+    {
+      digitalWrite(LEDPins[button], LOW);
+    }
+
+    Serial.print("timeAfterPressedLED[button] (time after pressed this button) = ");
+    Serial.println(millis());
+    timeWhenPressedLED[button] = 0;
+  }
 }
