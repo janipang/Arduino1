@@ -8,13 +8,16 @@ int toWho = 0;
 String myMsg = "";
 String text = "";
 char sendMsg[64];
+int inputStep = 0;
 bool waitNum = 1;
 bool waitText = 0;
+bool tokenState = 0;
 
 int hasReceivedData = 0; // ตัวแปรที่บอกว่าได้ข้อมูลจาก master แล้วรึยัง ถ้าได้ = 1 ถ้ายังไม่ได้ = 0
 
-void receiveEvent(int) {
+void receiveEvent(int) { //เก็บข้อมูลที่ได้รับมาไว้ใน myMsg
     hasReceivedData = 1;
+    myMsg = "";
     while (Wire.available()){
         myMsg += (char)Wire.read();
         //Serial.readString();
@@ -23,36 +26,43 @@ void receiveEvent(int) {
     Serial.println(myMsg);
 }
 
-void serialReceived(int){
+void serialReceived(){
+    Serial.println("---infunc---");
     while (Serial.available() > 0){
         char inByte = Serial.read();
-        if (waitNum){
+        Serial.println("---reading---");
+        if (inputStep == 0){ //สถานะใส่เลขเครื่อง
             toWho = (toWho * 10) + inByte - 48;
+            Serial.println("---input0---");
         }
-        else if (waitText){
+        else if (inputStep == 1){ //สถานะใส่ข้อความ
             text += inByte;
+            Serial.println("---input1---");
         }
-        
+
         if (Serial.available() <= 0){
-            waitNum = !waitNum;
-            waitText = !waitText;
+            inputStep = (inputStep + 1) % 3;
         }
     }
-    if (toWho >= 1 && toWho <= 3){
-        myMsg[6] = '1'; //token#1#
-        myMsg += '0' + toWho; //token#1#n
-        myMsg += '#'; //token#1#n#
-        myMsg += text ; //token#1#n#message
+    if (inputStep == 2){ //สถานะใส่เสร็จแล้ว เราเอามาประกอบข้อความ
+        if (toWho >= 1 && toWho <= 3){
+            myMsg[6] = '1'; //token#1#
+            myMsg += toWho; //token#1#n
+            myMsg += '#'; //token#1#n#
+            myMsg += text ; //token#1#n#message
+            toWho = 0;
+        }
+        else{
+            Serial.println("send Failed! Invalid device");
+            toWho = 0;
+        }
+        myMsg += '\0';
+        Serial.println("---input2---");
     }
-    else{
-        Serial.println("send Failed! Invalid device");
-    }
-    myMsg += '\0';
     Serial.print("Serial.read >>");
     Serial.println(myMsg);
     Serial.print(toWho);
     Serial.println("------------");
-    toWho = 0;
 }
 
 void changeTypeText(){
@@ -74,8 +84,10 @@ void setup() {
 
 void loop() {
     if(myMsg[6] == '0'){
+        Serial.println("---IN IF IN IF IN IF---");
         if (Serial.available() > 0){ //มีการinputข้อมูล
-            serialReceived;
+            Serial.println("---know that inputted----");
+            serialReceived();
         }
         else {
 
@@ -84,7 +96,7 @@ void loop() {
     else if(myMsg[6] == '1'){ //toWho = Me
         if(myMsg[8] - 48 == Me){
             Serial.println(myMsg);
-            myMsg = "token#0#"; //ส่งแล้ว set ค่าคืน
+            myMsg = "token#0#"; //printแล้ว set ค่าคืน
         }
         else if(myMsg[8] - 48 != Me){
             myMsg = myMsg; //ส่งข้อความเดิม
@@ -95,6 +107,9 @@ void loop() {
     if (hasReceivedData){
         hasReceivedData = 0;
 
+        Serial.print("Final Msg >>");
+        Serial.println(myMsg);
+
         changeTypeText();
         // byte buffer[myMsg.length() + 1];
         // myMsg.toCharArray(buffer, myMsg.length() + 1);
@@ -102,12 +117,9 @@ void loop() {
         Wire.write(sendMsg);
         Wire.endTransmission();
 
-        Serial.print("Final Msg >>");
-        Serial.println(myMsg);
         Serial.print("Send  Msg >>");
         Serial.println(sendMsg);
 
-        myMsg = "";
     }
     
 }
