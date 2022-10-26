@@ -44,25 +44,28 @@ void serialReceived(){
             inputStep = (inputStep + 1) % 3;
         }
     }
-    if (inputStep == 2){ //สถานะใส่เสร็จแล้ว เราเอามาประกอบข้อความ
+    if (inputStep == 2){ //สถานะ"ใส่เสร็จแล้ว" เราจะเอาข้อความมาประกอบ
         if (toWho >= 1 && toWho <= 3){
             myMsg[6] = '1'; //token#1#
             myMsg += toWho; //token#1#n
             myMsg += '#'; //token#1#n#
             myMsg += text ; //token#1#n#message
             toWho = 0;
+            text = "";
+            inputStep = (inputStep + 1) % 3;
         }
         else{
             Serial.println("send Failed! Invalid device");
             toWho = 0;
+            text = "";
+            inputStep = (inputStep + 1) % 3;
         }
         myMsg += '\0';
         Serial.println("---input2---");
     }
     Serial.print("Serial.read >>");
     Serial.println(myMsg);
-    Serial.print(toWho);
-    Serial.println("------------");
+    Serial.println("------end compose------");
 }
 
 void changeTypeText(){
@@ -70,8 +73,8 @@ void changeTypeText(){
         for(int i = 0 ; i < myMsg.length() ; i++){
             sendMsg[i] = myMsg[i];
         }
-        sendMsg[strlen(sendMsg)] = '\0';
-        myMsg = "";
+        sendMsg[myMsg.length()] = '\0';
+        // myMsg = "token#0#";
     }
 }
 
@@ -84,17 +87,15 @@ void setup() {
 
 void loop() {
     if(myMsg[6] == '0'){
-        Serial.println("---IN IF IN IF IN IF---");
         if (Serial.available() > 0){ //มีการinputข้อมูล
             Serial.println("---know that inputted----");
-            serialReceived();
-        }
+            serialReceived(); //ประกอบ token ใส่ myMsg
+        }    
         else {
-
         }
     }
-    else if(myMsg[6] == '1'){ //toWho = Me
-        if(myMsg[8] - 48 == Me){
+    else if(myMsg[6] == '1'){ 
+        if(myMsg[8] - 48 == Me){ //toWho = Me
             Serial.println(myMsg);
             myMsg = "token#0#"; //printแล้ว set ค่าคืน
         }
@@ -102,8 +103,7 @@ void loop() {
             myMsg = myMsg; //ส่งข้อความเดิม
         }
     }
-    
-
+ 
     if (hasReceivedData){
         hasReceivedData = 0;
 
@@ -124,4 +124,12 @@ void loop() {
     
 }
 
+// ถ้าได้รับ เก็บเข้าmyMsg (setup)
 
+//(loop)
+// ถ้าเป็น0 ถ้ามีซีเรียล ถ้ามีซีเรียล เก็บ
+//                 ถ้าไม่มีซีเรียล ประกอบ+รีเซ็ทtoWho
+//        ถ้าไม่มีซีเรียล 
+// ถ้าเป็น1 ถ้าใช่เรา แสดงผล+เซ็ทmyMsg
+//        ถ้าไม่ใช่เรา ข้อความเหมือนเดิม
+// ถ้ารับแล้ว เปลี่ยนsendMsg+เซ็ทmyMsg ส่งsendMsg 
