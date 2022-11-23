@@ -36,11 +36,11 @@ typedef const struct State SType;
 // input: 000, 001, 010, 011, 100, 101, 110, 111 //walk South West
 // output: B10001100 //walk South West
 SType FSM[11] = {
-    {B10001100, 3000, {goSnoWalk, waitSnoWalk, goSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk}},
-    {B10010100, 500, {goWnoWalk, goWnoWalk, goWnoWalk, goWnoWalk, walk, walk, walk, walk}},
-    {B10100001, 3000, {goWnoWalk, goWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk}},
-    {B10100010, 500, {goSnoWalk, goSnoWalk, goSnoWalk, goSnoWalk, walk, walk, walk, goSnoWalk}},
-    {B01100100, 3000, {walk, stopWalk1, stopWalk1, stopWalk1, walk, stopWalk1, stopWalk1, stopWalk1}},
+    {B10001100, 3000, {goSnoWalk, waitSnoWalk, goSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk, waitSnoWalk}},    //goSnoWalk
+    {B10010100, 500, {goWnoWalk, goWnoWalk, goWnoWalk, goWnoWalk, walk, walk, walk, walk}},                                     //waitSnoWalk
+    {B10100001, 3000, {goWnoWalk, goWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk, waitWnoWalk}},    //goWnoWalk
+    {B10100010, 500, {goSnoWalk, goSnoWalk, goSnoWalk, goSnoWalk, walk, walk, walk, goSnoWalk}},                                //waitWnoWalk
+    {B01100100, 3000, {walk, stopWalk1, stopWalk1, stopWalk1, walk, stopWalk1, stopWalk1, stopWalk1}},                          //walk
     {B00100100, 200, {stopWalk2, stopWalk2, stopWalk2, stopWalk2, stopWalk2, stopWalk2, stopWalk2, stopWalk2}}, //ดับ stopwalk1
     {B01100100, 200, {stopWalk3, stopWalk3, stopWalk3, stopWalk3, stopWalk3, stopWalk3, stopWalk3, stopWalk3}}, //ติด stopwalk2
     {B00100100, 200, {stopWalk4, stopWalk4, stopWalk4, stopWalk4, stopWalk4, stopWalk4, stopWalk4, stopWalk4}}, //ดับ stopwalk3
@@ -90,10 +90,10 @@ void loop()
     input2 = digitalRead(SOUTH_BUTTON_PIN);
     input3 = digitalRead(WALKING_BUTTON_PIN);
 
-    Serial.println(input1);
-    Serial.println(", ");
-    Serial.println(input2);
-    Serial.println(", ");
+    Serial.print(input1);
+    Serial.print(", ");
+    Serial.print(input2);
+    Serial.print(", ");
     Serial.println(input3);
     Serial.println("--WEST,SOUTH,WALK----");
 
