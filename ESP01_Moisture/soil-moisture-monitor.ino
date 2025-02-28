@@ -14,6 +14,7 @@
 Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1); // ใช้ -1 ถ้าไม่มีขา Reset
 unsigned long time_now = 0;
 unsigned long last_time = 0;
+unsigned long last_half_time = 0;
 
 int display_image = 1;
 
@@ -25,6 +26,9 @@ int duration[] = {400, 400, 400, 400, 400, 400, 800, 400, 400, 400, 400, 400, 40
 int num_notes = sizeof(notes) / sizeof(notes[0]);
 bool is_new_note = true;
 bool is_tone_playing = true;
+long durationEcho;
+float distance;
+bool appearance = false;
 
 // 'epd_bitmap_yummy', 128x64px
 const unsigned char epd_bitmap_yummy[] PROGMEM = {
@@ -569,12 +573,24 @@ void startMelody()
     melody_status = true;
     start_melody_time = millis();
     is_tone_playing = true;
+    appearance = true;
+    display_image = 0;
+    display.clearDisplay();
+    display.drawBitmap(0, 0, epd_bitmap_nearhand, 128, 64, SH110X_WHITE);
+    display.display();
 }
 
 void playMelody()
 {
     if (!melody_status || currentNote >= num_notes)
+    {
+        if (currentNote >= num_notes)
+        {
+            melody_status = false;
+            appearance = false;
+        }
         return;
+    }
 
     unsigned long elapsedTime = millis() - start_melody_time;
 
@@ -610,8 +626,6 @@ void setup()
     pinMode(TRIG_PIN, OUTPUT);
     pinMode(ECHO_PIN, INPUT);
     pinMode(BUZZER_PIN, OUTPUT);
-    // สั่งให้เล่นเพลง
-    startMelody();
 }
 
 void loop()
@@ -665,45 +679,93 @@ void loop()
 
         Serial.print("Soil Status: ");
         Serial.println(soilStatus);
-        display.clearDisplay();
+    }
 
-        // แสดงภาพสถานะ
-        if (display_image == 1)
+
+    if (millis() - last_half_time >= 500)
+    {
+        last_half_time = millis();
+        if (display_image == 5)
         {
-            display.drawBitmap(0, 0, epd_bitmap_yummy, 128, 64, SH110X_WHITE);
-        }
-        else if (display_image == 2)
-        {
-            display.drawBitmap(0, 0, epd_bitmap_love, 128, 64, SH110X_WHITE);
-        }
-        else if (display_image == 3)
-        {
-            display.drawBitmap(0, 0, epd_bitmap_bigsmile, 128, 64, SH110X_WHITE);
-        }
-        else if (display_image == 4)
-        {
-            display.drawBitmap(0, 0, epd_bitmap_smilewithbrow, 128, 64, SH110X_WHITE);
-        }
-        else if (display_image == 5)
-        {
-            display.drawBitmap(0, 0, epd_bitmap_crying, 128, 64, SH110X_WHITE);
+            display_image = 6;
         }
         else if (display_image == 6)
         {
-            display.drawBitmap(0, 0, epd_bitmap_worry, 128, 64, SH110X_WHITE);
+            display_image = 5;
         }
-        else if (display_image == 7)
+
+        if (display_image == 0)
         {
-            display.drawBitmap(0, 0, epd_bitmap_angry, 128, 64, SH110X_WHITE);
+            display_image = 2;
         }
-        else if (display_image == 8)
+        else if (display_image == 2)
         {
-            display.drawBitmap(0, 0, epd_bitmap_nearhand, 128, 64, SH110X_WHITE);
+            display_image = 0;
+        }
+
+        
+        if (appearance == true)
+        {
+            Serial.println("appearance");
+        }
+        else
+        {
+            // แสดงภาพสถานะ
+            display.clearDisplay();
+
+            if (display_image == 1)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_yummy, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 2)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_love, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 3)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_bigsmile, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 4)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_smilewithbrow, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 5)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_crying, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 6)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_worry, 128, 64, SH110X_WHITE);
+            }
+            else if (display_image == 7)
+            {
+                display.drawBitmap(0, 0, epd_bitmap_angry, 128, 64, SH110X_WHITE);
+            }
         }
 
         display.display(); // อัปเดตหน้าจอ
     }
 
+    // ส่งสัญญาณ Trigger
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+
+    // รับค่าระยะทางจาก Echo
+    durationEcho = pulseIn(ECHO_PIN, HIGH);
+    distance = (durationEcho * 0.0343) / 2; // แปลงเป็นเซนติเมตร
+
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.println(" cm");
+
+    // ถ้าวัตถุอยู่ใกล้กว่า 20 ซม. ให้เล่นเสียงเพลง
+    if (distance > 0 && distance < 20)
+    {
+        startMelody();
+    }
     if (melody_status == true)
     {
         playMelody();
